@@ -1,0 +1,4 @@
+org/*
+!org/*.org
+
+*.egg-info
