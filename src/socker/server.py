@@ -1,8 +1,11 @@
 import logging
 import asyncio
 
-import websockets
+from collections import defaultdict
+from functools import partial
+
 import asyncio_redis
+import websockets
 
 from .transport import SockMessage
 
@@ -10,85 +13,81 @@ _log = logging.getLogger(__name__)
 
 
 @asyncio.coroutine
-def redis_listener(queue, subscriber):
-
-    while True:
-        pub = yield from subscriber.next_published()
-
-        _log.debug('From redis: %r', pub)
-        yield from queue.put(('redis', pub))
-
-
-@asyncio.coroutine
-def websocket_listener(queue, websocket):
-    while True:
-        recv = yield from websocket.recv()
-
-        _log.debug('%s: from websocket: %r', id(websocket), recv)
-
-        if recv is None:
-            _log.info('Client closed connection, returning')
-            return
-
-        yield from queue.put(('websocket', recv))
-
-
-@asyncio.coroutine
-def hello(websocket, path):
-    _log.info('Hello %r with path: %s', websocket, path)
-
+def websocket_handler(router, websocket, path):
     channels = set()
+    _log.info('New websocket %r with path: %s', websocket, path)
 
     try:
-        connection = yield from asyncio_redis.Connection.create()
-        subscriber = yield from connection.start_subscribe()
-        queue = asyncio.Queue()
-
-        asyncio.Task(redis_listener(queue, subscriber))
-        asyncio.Task(websocket_listener(queue, websocket))
-
         while True:
-            producer, data = yield from queue.get()
+            data = yield from websocket.recv()
 
-            _log.debug('Fresh produce! %r', (producer, data))
+            if data is None:
+                _log.debug('Client closed websocket')
+                break
 
-            if producer is 'redis':
-                yield from websocket.send(
-                        str(SockMessage.from_redis(data)))
+            message = SockMessage.from_string(data)
+            _log.debug('got message: %s', message)
 
-            elif producer is 'websocket':
-                message = data
+            if message.name == 'subscribe':
+                _channels = set(message.data)
+                old_channels = channels - _channels
+                new_channels = _channels - channels
 
-                if message is None:
-                    _log.debug('Client closed websocket')
-                    break
+                if old_channels:
+                    _log.debug('%s: Unsubscribing to redis channels %r...',
+                               id(websocket), old_channels)
+                    router.unsubscribe(websocket, *old_channels)
 
-                message = SockMessage.from_string(message)
-                _log.debug('got message: %s', message)
+                if new_channels:
+                    _log.debug('%s: Subscribing to redis on channels %r...',
+                               id(websocket), new_channels)
+                    router.subscribe(websocket, *new_channels)
 
-                if message.name == 'subscribe':
-                    _channels = set(message.data)
-                    old_channels = list(channels - _channels)
-                    new_channels = list(_channels - channels)
+                channels = _channels
 
-                    if old_channels:
-                        _log.debug('%s: Unsubscribing to redis channels %r...', id(websocket), old_channels)
-                        yield from subscriber.unsubscribe(old_channels)
-
-                    if new_channels:
-                        _log.debug('%s: Subscribing to redis on channels %r...', id(websocket), new_channels)
-                        yield from subscriber.subscribe(new_channels)
-
-                    channels = _channels
-
-                else:
-                    _log.warning('No handler for %s', message)
+            else:
+                _log.warning('No handler for %s', message)
 
         _log.debug('Closing')
     except Exception as e:
         _log.exception('Ouch! %r', e)
     finally:
         yield from websocket.close()
+
+
+@asyncio.coroutine
+def redis(router):
+    connection = yield from asyncio_redis.Connection.create()
+    subscriber = yield from connection.start_subscribe()
+    yield from subscriber.subscribe(['socker'])
+
+    while True:
+        pub = yield from subscriber.next_published()
+        _log.debug('From redis: %r', pub)
+
+        message = SockMessage.from_string(pub.value)
+
+        websockets = router.get(message.name)
+
+        for websocket in websockets:
+            yield from websocket.send(pub.value)
+
+
+class Router(object):
+
+    def __init__(self):
+        self.channels = defaultdict(list)
+
+    def get(self, channel):
+        return self.channels[channel]
+
+    def subscribe(self, websocket, *channels):
+        for channel in channels:
+            self.channels[channel].append(websocket)
+
+    def unsubscribe(self, websocket, *channels):
+        for channel in channels:
+            self.channels[channel].remove(websocket)
 
 
 def main(interface=None, port=None):
@@ -100,7 +99,13 @@ def main(interface=None, port=None):
 
     _log.info('Starting socker on {}:{}'.format(interface, port))
 
-    start_server = websockets.serve(hello, interface, port)
+    router = Router()
+
+    asyncio.async(redis(router))
+
+    start_server = websockets.serve(partial(websocket_handler, router),
+                                    interface,
+                                    port)
 
     asyncio.get_event_loop().run_until_complete(start_server)
     asyncio.get_event_loop().run_forever()

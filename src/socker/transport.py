@@ -14,10 +14,6 @@ class SockMessage:
         return self._data
 
     @classmethod
-    def from_redis(cls, reply):
-        return cls(reply.channel, json.loads(reply.value))
-
-    @classmethod
     def from_string(cls, string):
         name, data = string.split('|', 1)
         return cls(name, data)
