@@ -7,7 +7,7 @@ from functools import partial
 import asyncio_redis
 import websockets
 
-from .transport import SockMessage
+from .transport import Message
 
 _log = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ def websocket_handler(router, websocket, path):
                 _log.debug('Client closed websocket')
                 break
 
-            message = SockMessage.from_string(data)
+            message = Message.from_string(data)
             _log.debug('got message: %s', message)
 
             if message.name == 'subscribe':
@@ -65,11 +65,11 @@ def redis(router):
         pub = yield from subscriber.next_published()
         _log.debug('From redis: %r', pub)
 
-        message = SockMessage.from_string(pub.value)
+        message = Message.from_string(pub.value)
 
-        websockets = router.get(message.name)
+        clients = router.get(message.name)
 
-        for websocket in websockets:
+        for websocket in clients:
             yield from websocket.send(pub.value)
 
 
@@ -103,9 +103,10 @@ def main(interface=None, port=None):
 
     asyncio.async(redis(router))
 
-    start_server = websockets.serve(partial(websocket_handler, router),
-                                    interface,
-                                    port)
+    start_server = websockets.serve(
+        partial(websocket_handler, router),
+        interface,
+        port)
 
     asyncio.get_event_loop().run_until_complete(start_server)
     asyncio.get_event_loop().run_forever()

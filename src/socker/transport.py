@@ -1,7 +1,7 @@
 import json
 
 
-class SockMessage:
+class Message:
     def __init__(self, name, data):
         self.name = name
         self._data = data
