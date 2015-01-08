@@ -37,8 +37,7 @@ def websocket_listener(queue, websocket):
 def hello(websocket, path):
     _log.info('Hello %r with path: %s', websocket, path)
 
-    channels = ()
-    channels_last = ()
+    channels = set()
 
     try:
         connection = yield from asyncio_redis.Connection.create()
@@ -49,12 +48,6 @@ def hello(websocket, path):
         asyncio.Task(websocket_listener(queue, websocket))
 
         while True:
-            if channels != channels_last:
-                _log.debug('Subscribing to redis on channels %r...', channels)
-                yield from subscriber.subscribe(list(channels))
-                channels_last = channels
-                _log.debug('... subscribed to redis')
-
             producer, data = yield from queue.get()
 
             _log.debug('Fresh produce! %r', (producer, data))
@@ -74,7 +67,22 @@ def hello(websocket, path):
                 _log.debug('got message: %s', message)
 
                 if message.name == 'subscribe':
-                    channels = (message.data,)
+                    _channels = set(message.data)
+                    old_channels = list(channels - _channels)
+                    new_channels = list(_channels - channels)
+
+                    if old_channels:
+                        _log.debug('Unsubscribing to redis channels %r...', old_channels)
+                        yield from subscriber.unsubscribe(old_channels)
+                        _log.debug('... unsubscribed')
+
+                    if new_channels:
+                        _log.debug('Subscribing to redis on channels %r...', new_channels)
+                        yield from subscriber.subscribe(new_channels)
+                        _log.debug('... subscribed')
+
+                    channels = _channels
+
                 else:
                     _log.warning('No handler for %s', message)
 
