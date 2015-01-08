@@ -24,7 +24,7 @@ def websocket_listener(queue, websocket):
     while True:
         recv = yield from websocket.recv()
 
-        _log.debug('from websocket: %r', recv)
+        _log.debug('%s: from websocket: %r', id(websocket), recv)
 
         if recv is None:
             _log.info('Client closed connection, returning')
@@ -72,14 +72,12 @@ def hello(websocket, path):
                     new_channels = list(_channels - channels)
 
                     if old_channels:
-                        _log.debug('Unsubscribing to redis channels %r...', old_channels)
+                        _log.debug('%s: Unsubscribing to redis channels %r...', id(websocket), old_channels)
                         yield from subscriber.unsubscribe(old_channels)
-                        _log.debug('... unsubscribed')
 
                     if new_channels:
-                        _log.debug('Subscribing to redis on channels %r...', new_channels)
+                        _log.debug('%s: Subscribing to redis on channels %r...', id(websocket), new_channels)
                         yield from subscriber.subscribe(new_channels)
-                        _log.debug('... subscribed')
 
                     channels = _channels
 
