@@ -52,6 +52,7 @@ def websocket_handler(router, websocket, path):
     except Exception as e:
         _log.exception('Ouch! %r', e)
     finally:
+        router.unsubscribe(websocket, *channels)
         yield from websocket.close()
 
 
