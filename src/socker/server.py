@@ -1,14 +1,14 @@
 import logging
 import asyncio
 
-from collections import defaultdict
 from functools import partial
-from array import array
 
 import asyncio_redis
 import websockets
 
+from .tools import base_words
 from .transport import Message
+from .router import Router
 
 _log = logging.getLogger(__name__)
 
@@ -76,78 +76,6 @@ def redis(router, **kw):
 
         for websocket in clients:
             yield from websocket.send(pub.value)
-
-
-class Router(object):
-
-    def __init__(self, debug=False, debug_interval=30):
-        self.channels = defaultdict(list)
-
-        self.debug_interval = debug_interval
-
-        if debug:
-            asyncio.get_event_loop()\
-                .call_later(self.debug_interval, self.debug)
-
-    def get(self, channel):
-        return self.channels[channel]
-
-    def subscribe(self, websocket, *channels):
-        _log.debug('%s: subscribing to %r', websocket.name, channels)
-        for channel in channels:
-            self.channels[channel].append(websocket)
-
-    def unsubscribe(self, websocket, *channels):
-        _log.debug('%s: unsubscribing from %r', websocket.name, channels)
-        for channel in channels:
-            self.channels[channel].remove(websocket)
-
-    def debug(self):
-        _log.debug('subscriptions: \n%s', self.format_subscriptions())
-        asyncio.get_event_loop().call_later(self.debug_interval, self.debug)
-
-    def format_subscriptions(self):
-        import pprint
-        return pprint.pformat(dict(self.readable_channels()))
-
-    def readable_channels(self):
-        for channel, subscribers in self.channels.items():
-            yield channel, len(subscribers)
-
-
-def base_words(integer):
-    """
-    Convert a positive integer to a memorable string based on words from
-    /usr/share/dict/words.
-
-    :param integer: positive base 10 number
-    :type integer: int
-    :return: str containing capitalized words
-    """
-    if integer < 0:
-        raise ValueError('base_words does not support negative integers')
-
-    # Save the words in an in-memory cache attached to this method.
-    if not hasattr(base_words, 'cache'):
-        base_words.cache = words = []
-        for word in open('/usr/share/dict/words', 'r'):
-            # Filter out plurals, possessive form and conjugations.
-            if '\'' not in word:
-                words.append(word.strip().capitalize())
-
-    words = base_words.cache
-
-    new_base = len(words)
-
-    result = ''
-
-    current = integer
-
-    while current != 0:
-        current, remainder = divmod(current, new_base)
-        result += words[remainder]
-
-    return result
 
 
 def main(interface=None, port=None, debug=False, **kw):
