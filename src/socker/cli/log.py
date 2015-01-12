@@ -26,11 +26,13 @@ def configure(filename, verbose):
         'disable_existing_loggers': False,
         'formatters': {
             'default': {
-                'format': '%(asctime)s [%(process)d] %(levelname) 8s >> %(message)s'
+                'format': '%(asctime)s [%(process)d] %(name) 20s'
+                          ' %(levelname) 8s >> %(message)s'
             },
             'colorized': {
                 '()': 'socker.cli.log.ColorizedFormatter',
-                'fmt': '%(asctime)s [%(process)d] %(levelname) 8s >> %(message)s'
+                'fmt': '%(asctime)s [%(process)d] %(name) 20s'
+                       ' %(levelname) 8s >> %(message)s'
             }
         },
         'handlers': {
