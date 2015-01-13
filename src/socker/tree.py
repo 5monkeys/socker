@@ -1,4 +1,5 @@
 from collections import defaultdict
+from functools import reduce
 
 
 class Tree(defaultdict, dict):
@@ -14,48 +15,49 @@ class Tree(defaultdict, dict):
 
     def walk(self, path):
         """
-        Walk tree and yield nodes in path.
+        Walk tree and yield tuple(key, node, is_leaf) in path.
 
         :param path: dot separated tree path
         """
-        parts = path.split('.')
-        cursor = self
+        keys = iter(path.split('.'))
+        key, node = None, self
 
-        for part in parts:
-            yield cursor, False
-            cursor = cursor[part]
-
-        yield cursor, True
-
-    def get_leaf(self, path):
-        """
-        Get last node of path in tree
-
-        :param path: dot separated tree path
-        :return: node
-        """
-        node, _ = list(self.walk(path))[-1]
-        return node
+        while node is not None:
+            _key = next(keys, None)
+            _node = node.get(_key)
+            yield key, node, _key is None
+            key, node = _key, _node
 
     def add(self, member, *paths):
         """
-        Add member to nodes at paths
+        Add member to tree at node paths.
 
         :param member: object to add in tree at paths
         :param paths: dot separated tree paths
         """
         for path in paths:
-            self.get_leaf(path).members.add(member)
+            leaf = reduce(lambda n, p: n[p], path.split('.'), self)
+            leaf.members.add(member)
 
     def remove(self, member, *paths):
         """
-        Remove member from nodes at paths
+        Remove member from tree at node paths.
+        Cleanups affected nodes without members or siblings.
 
         :param member: object to add in tree at paths
         :param paths: dot separated tree paths
         """
         for path in paths:
-            self.get_leaf(path).members.remove(member)
+            child = None
+            nodes = list(self.walk(path))
+            for name, node, is_leaf in reversed(nodes):
+                if is_leaf:
+                    node.members.remove(member)
+                if child:
+                    del node[child]
+                if node.members or node.keys():
+                    break
+                child = name
 
     def get_members(self, path):
         """
@@ -66,10 +68,10 @@ class Tree(defaultdict, dict):
         """
         members = set()
 
-        for node, is_leaf in self.walk(path):
+        for _, node, is_leaf in self.walk(path):
             if is_leaf:
                 members.update(node.members)
-            else:
+            elif '*' in node:
                 members.update(node['*'].members)
 
         return members
