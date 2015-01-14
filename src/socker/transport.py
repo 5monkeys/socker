@@ -1,4 +1,13 @@
+import datetime
 import json
+
+
+class DateTimeEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, (datetime.datetime, datetime.date)):
+            return o.isoformat()
+        else:
+            return super().default(o)
 
 
 class Message:
@@ -19,4 +28,4 @@ class Message:
         return cls(name, data)
 
     def __str__(self):
-        return self.name + '|' + json.dumps(self.data)
+        return self.name + '|' + json.dumps(self.data, cls=DateTimeEncoder)
