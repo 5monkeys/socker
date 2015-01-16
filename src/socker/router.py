@@ -17,7 +17,7 @@ class Router:
                 .call_later(self.debug_interval, self.debug)
 
     def get(self, channel):
-        return self.channels.get_members(channel)
+        return self.channels.get_matches(channel)
 
     def subscribe(self, websocket, *channels):
         _log.debug('%s: subscribing to %r', websocket.name, channels)

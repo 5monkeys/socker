@@ -23,9 +23,12 @@ class Tree(defaultdict, dict):
         key, node = None, self
 
         while node is not None:
+            # Fetch next key to see when we arrive at a leaf node
             _key = next(keys, None)
             _node = node.get(_key)
+
             yield key, node, _key is None
+
             key, node = _key, _node
 
     def add(self, member, *paths):
@@ -75,3 +78,16 @@ class Tree(defaultdict, dict):
                 members.update(node['*'].members)
 
         return members
+
+    def get_matches(self, path):
+        qualified_path = []
+        for cursor_path, node, is_leaf in self.walk(path):
+            if cursor_path is not None:
+                qualified_path.append(cursor_path)
+
+            if is_leaf:
+                for member in node.members:
+                    yield '.'.join(qualified_path), member
+            elif '*' in node:
+                for member in node['*'].members:
+                    yield '.'.join(qualified_path + ['*']), member

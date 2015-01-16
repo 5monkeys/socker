@@ -38,12 +38,12 @@ def websocket_handler(router, websocket, path):
                 new_channels = _channels - channels
 
                 if old_channels:
-                    _log.debug('%s: Unsubscribing to redis channels %r...',
+                    _log.debug('%s: Unsubscribing from channels %r...',
                                websocket.name, old_channels)
                     router.unsubscribe(websocket, *old_channels)
 
                 if new_channels:
-                    _log.debug('%s: Subscribing to redis on channels %r...',
+                    _log.debug('%s: Subscribing to channels %r...',
                                websocket.name, new_channels)
                     router.subscribe(websocket, *new_channels)
 
@@ -74,8 +74,12 @@ def redis(router, **kw):
 
         clients = router.get(message.name)
 
-        for websocket in clients:
-            yield from websocket.send(pub.value)
+        for channel, websocket in clients:
+            # Create a new channel with the channel name that the Socker
+            # client used to subscribe. We do this in order to not have
+            # the wildcard matching in more than one place.
+            channel_message = Message(channel, message.data)
+            yield from websocket.send(str(channel_message))
 
 
 def main(interface=None, port=None, debug=False, **kw):

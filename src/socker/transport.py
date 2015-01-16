@@ -11,21 +11,16 @@ class DateTimeEncoder(json.JSONEncoder):
 
 
 class Message:
+    # TODO: Could be optimized to not decode JSON until needed.
+    # TODO: Could be optimized to not encode JSON until needed.
     def __init__(self, name, data):
         self.name = name
-        self._data = data
-
-    @property
-    def data(self):
-        if isinstance(self._data, (bytes, str)):
-            self._data = json.loads(self._data)
-
-        return self._data
+        self.data = data
 
     @classmethod
     def from_string(cls, string):
         name, data = string.split('|', 1)
-        return cls(name, data)
+        return cls(name, json.loads(data))
 
     def __str__(self):
         return self.name + '|' + json.dumps(self.data, cls=DateTimeEncoder)
