@@ -22,12 +22,12 @@ def base_words(integer):
 
     new_base = len(words)
 
-    result = ''
+    result = []
 
     current = integer
 
     while current != 0:
         current, remainder = divmod(current, new_base)
-        result += words[remainder]
+        result.append(words[remainder])
 
-    return result
+    return ''.join(reversed(result))
