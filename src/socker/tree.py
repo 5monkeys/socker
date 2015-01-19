@@ -39,7 +39,10 @@ class Tree(defaultdict, dict):
         :param paths: dot separated tree paths
         """
         for path in paths:
-            leaf = reduce(lambda n, p: n[p], path.split('.'), self)
+            leaf = reduce(lambda n, p: n[p],
+                          path.split('.'),
+                          self)
+
             leaf.members.add(member)
 
     def remove(self, member, *paths):
@@ -67,7 +70,8 @@ class Tree(defaultdict, dict):
         Get unique members for path, including parent wildcards.
 
         :param path: dot separated tree path
-        :return: set of members
+        :return: members
+        :rtype: set
         """
         members = set()
 
@@ -80,6 +84,15 @@ class Tree(defaultdict, dict):
         return members
 
     def get_matches(self, path):
+        """
+        Take a path, return all matching members and their positions in the
+        tree as a dot-delimited path.
+
+        :param path: dot-delimited path.
+        :type path: str
+        :return: path, member
+        :rtype: tuple
+        """
         qualified_path = []
         for cursor_path, node, is_leaf in self.walk(path):
             if cursor_path is not None:

@@ -55,6 +55,60 @@ class TestTree(unittest.TestCase):
         self.assertNotIn('foo', tree)        # foo (bar, baz) node cleaned up
         self.assertFalse(tree)
 
+    def test_matches_alone(self):
+        tree = Tree()
+
+        member = 'joar'
+
+        match_paths = [
+            'foo.bar.baz',
+            'foo.bar.baz.frog',
+        ]
+
+        wildcard_path = 'foo.bar.*'
+
+        # Add both wildcard and path to tree.
+        tree.add(member, wildcard_path)
+
+        for path in match_paths:
+            # Convert tuple generator to dict
+            matches = dict(tree.get_matches(path))
+
+            self.assertEqual({wildcard_path: member}, matches)
+
+    def test_matches_direct(self):
+        """
+        Test that literal 'foo.bar.*' matches 'foo.bar.*' wildcard.
+        :return:
+        """
+        tree = Tree()
+
+        member = 'joar'
+        wildcard_path = 'foo.bar.*'
+
+        # Add both wildcard and path to tree.
+        tree.add(member, wildcard_path)
+
+        matches = dict(tree.get_matches(wildcard_path))
+
+        self.assertEqual({wildcard_path: member}, matches)
+
+    def test_not_matches(self):
+        tree = Tree()
+
+        member = 'joar'
+        path = 'foo.not-bar.baz'
+        wildcard_path = 'foo.bar.*'
+
+        # Add member to paths 'foo.not-bar.baz' and 'foo.bar.*'
+        tree.add(member, wildcard_path)
+
+        # Get matches for 'foo.not-bar.baz' and convert tuple generator to dict
+        matches = dict(tree.get_matches(path))
+
+        # Assert 'foo.bar.*' did not match
+        self.assertNotIn(wildcard_path, matches)
+
 
 if __name__ == '__main__':
     unittest.main()
