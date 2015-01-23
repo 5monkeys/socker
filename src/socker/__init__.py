@@ -1,3 +1,5 @@
+from .transport import Message
+
 VERSION = (0, 0, 1, 'alpha', 1)
 
 

@@ -82,17 +82,12 @@ def redis(router, **kw):
             yield from websocket.send(str(channel_message))
 
 
-def main(interface=None, port=None, debug=False, **kw):
-    if port is None:
-        port = 8765
-
-    if interface is None:
-        interface = 'localhost'
-
+def main(interface='localhost', port=8765, debug=False, **kw):
     _log.info('Starting socker on {}:{}'.format(interface, port))
 
     router = Router(debug, debug_interval=10)
 
+    # Transform {'redis_host': 'redis.example'} into {'host': 'redis.example'}
     redis_opts = {k.replace('redis_', ''): v
                   for k, v in kw.items()
                   if 'redis_' in k}

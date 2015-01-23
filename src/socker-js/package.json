@@ -1,0 +1,26 @@
+{
+  "name": "socker.js",
+  "version": "0.1.1",
+  "description": "socker client",
+  "main": "socker.js",
+  "directories": {
+    "example": "example"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/5monkeys/socker"
+  },
+  "keywords": [
+    "websocket",
+    "pubsub"
+  ],
+  "author": "Joar Wandborg, 5 Monkeys Agency AB",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/5monkeys/socker/issues"
+  },
+  "homepage": "https://github.com/5monkeys/socker"
+}
