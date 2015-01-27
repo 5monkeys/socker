@@ -1,5 +1,3 @@
-var _ = require('lodash');
-
 class Message {
     constructor(name, data) {
         this.name = name;
@@ -50,23 +48,6 @@ class Socker {
         this._bundleTimeoutID = null;
 
         this._connect();
-    }
-
-    _debug() {
-        var stats = {
-            numChannels: Object.keys(this.listeners).length,
-            channelStats: _.clone(this.listeners, true),
-        };
-
-        Object.keys(stats.channelStats).map(function (channel) {
-            var cs = stats.channelStats;
-
-            cs[channel] = cs[channel].length;
-        });
-
-        console.log('stats',
-            JSON.stringify(stats, null, '\t'),
-            this.listeners);
     }
 
     _connect(_reconnecting) {

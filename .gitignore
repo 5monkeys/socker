@@ -6,3 +6,6 @@ org/*
 .idea/*
 
 *.py[cod]
+
+/socker.js/node_modules
+/socker.js/dist
