@@ -29,7 +29,8 @@ import signal
 from docopt import docopt
 
 from . import log
-from .. import __version__, server
+from .. import server
+from ..version import __version__
 
 logger = logging.getLogger(__name__)
 
