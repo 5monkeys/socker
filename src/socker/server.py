@@ -5,6 +5,7 @@ from functools import partial
 
 import asyncio_redis
 import websockets
+from websockets.exceptions import InvalidState
 
 from .tools import base_words
 from .transport import Message
@@ -14,12 +15,28 @@ _log = logging.getLogger(__name__)
 
 
 @asyncio.coroutine
+def keep_alive(websocket, ping_period=30):
+    while True:
+        yield from asyncio.sleep(ping_period)
+
+        try:
+            yield from websocket.ping()
+        except InvalidState:
+            _log.debug('Got exception when trying to keep connection alive, '
+                       'giving up.')
+            return
+
+
+@asyncio.coroutine
 def websocket_handler(router, websocket, path):
     websocket.name = base_words(id(websocket))
 
     channels = set()
 
     _log.info('New websocket %s with path: %s', websocket.name, path)
+
+    # Launch keep-alive coroutine
+    asyncio.async(keep_alive(websocket))
 
     try:
         while True:
