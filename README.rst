@@ -17,14 +17,9 @@ a subscription on the socker channel.
 Installation
 ------------
 
-
-socker is not on PyPI, so you'll have to run
-
 .. code-block:: bash
 
-    pip install -e 'git+http://github.com/5monkeys/socker.git#egg=socker'
-
-in order to use it.
+    pip install socker
 
 -----
 Usage
