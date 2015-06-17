@@ -10,6 +10,7 @@ from websockets.exceptions import InvalidState
 from .tools import base_words
 from .transport import Message
 from .router import Router
+from .auth import get_auth_coro
 
 _log = logging.getLogger(__name__)
 
@@ -28,7 +29,7 @@ def keep_alive(websocket, ping_period=30):
 
 
 @asyncio.coroutine
-def websocket_handler(router, websocket, path):
+def websocket_handler(router, check_auth, websocket, path):
     websocket.name = base_words(id(websocket))
 
     channels = set()
@@ -52,17 +53,31 @@ def websocket_handler(router, websocket, path):
             if message.name == 'subscribe':
                 _channels = set(message.data)
                 old_channels = channels - _channels
-                new_channels = _channels - channels
+                requested_channels = _channels - channels
+
+                new_channels = set()
+
+                for channel in requested_channels:
+                    auth_passed = yield from check_auth(channel, path)
+
+                    if not auth_passed:
+                        _log.info('Authentication failed for %s (path: %s) '
+                                  'with channel %s',
+                                  websocket.name,
+                                  path,
+                                  channel)
+                    else:
+                        new_channels.add(channel)
 
                 if old_channels:
                     _log.debug('%s: Unsubscribing from channels %r...',
                                websocket.name, old_channels)
                     router.unsubscribe(websocket, *old_channels)
 
-                if new_channels:
+                if requested_channels:
                     _log.debug('%s: Subscribing to channels %r...',
-                               websocket.name, new_channels)
-                    router.subscribe(websocket, *new_channels)
+                               websocket.name, requested_channels)
+                    router.subscribe(websocket, *requested_channels)
 
                 channels = _channels
             else:
@@ -78,7 +93,7 @@ def websocket_handler(router, websocket, path):
 
 
 @asyncio.coroutine
-def redis(router, **kw):
+def redis_subscriber(router, **kw):
     connection = yield from asyncio_redis.Connection.create(**kw)
     subscriber = yield from connection.start_subscribe()
     yield from subscriber.subscribe(['socker'])
@@ -92,14 +107,14 @@ def redis(router, **kw):
         clients = router.get(message.name)
 
         for channel, websocket in clients:
-            # Create a new channel with the channel name that the Socker
-            # client used to subscribe. We do this in order to not have
-            # the wildcard matching in more than one place.
+            # Send the message with the same channel the client used to
+            # subscribe.
             channel_message = Message(channel, message.data)
             yield from websocket.send(str(channel_message))
 
 
-def main(interface='localhost', port=8765, debug=False, **kw):
+def main(interface='localhost', port=8765, debug=False, auth_backend=None,
+         **kw):
     _log.info('Starting socker on {}:{}'.format(interface, port))
 
     router = Router(debug, debug_interval=10)
@@ -109,10 +124,12 @@ def main(interface='localhost', port=8765, debug=False, **kw):
                   for k, v in kw.items()
                   if 'redis_' in k}
 
-    asyncio.async(redis(router, **redis_opts))
+    check_auth = get_auth_coro(auth_backend)
+
+    asyncio.async(redis_subscriber(router, **redis_opts))
 
     start_server = websockets.serve(
-        partial(websocket_handler, router),
+        partial(websocket_handler, router, check_auth),
         interface,
         port)
 

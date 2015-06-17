@@ -19,8 +19,9 @@ class Message:
 
     @classmethod
     def from_string(cls, string):
-        name, data = string.split('|', 1)
-        return cls(name, json.loads(data))
+        name, json_data = string.split('|', 1)
+
+        return cls(name, json.loads(json_data))
 
     def __str__(self):
         return self.name + '|' + json.dumps(self.data, cls=DateTimeEncoder)

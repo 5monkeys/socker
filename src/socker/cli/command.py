@@ -12,6 +12,9 @@ Options:
 
   -v              Enable verbose output
 
+  --auth-backend=PATH           Auth backend path
+                                [default: socker.auth:default_backend]
+
   --redis-host=HOST             Redis host [default: localhost]
   --redis-port=PORT             Redis port [default: 6379]
   --redis-db=DB                 Redis database [default: 0]
@@ -68,6 +71,7 @@ class Interface(object):
             interface=self.opts['-i'],
             port=int(self.opts['-p']),
             debug=self.opts['-v'],
+            auth_backend=self.opts['--auth-backend'],
             **redis_opts)
 
     def reload(self):
@@ -86,8 +90,7 @@ class Interface(object):
     def safe_quit(self):
         # TODO: Implement safer way to exit
         logger.info('Closing event loop...')
-        asyncio.get_event_loop().close()
-        self.quit()
+        asyncio.get_event_loop().stop()
 
     @staticmethod
     def quit(exit_code=0):
