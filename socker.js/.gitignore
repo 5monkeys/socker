@@ -1,0 +1,5 @@
+# node.js libraries
+/node_modules
+
+# Build directories
+/dist
