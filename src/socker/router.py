@@ -1,3 +1,4 @@
+import signal
 import logging
 import asyncio
 
@@ -7,14 +8,12 @@ _log = logging.getLogger(__name__)
 
 
 class Router:
-    def __init__(self, debug=False, debug_interval=30):
+    def __init__(self, debug=False):
         self.channels = Tree()
-
-        self.debug_interval = debug_interval
 
         if debug:
             asyncio.get_event_loop()\
-                .call_later(self.debug_interval, self.debug)
+                .add_signal_handler(signal.SIGUSR1, self.debug)
 
     def get(self, channel):
         return self.channels.get_matches(channel)
@@ -29,4 +28,3 @@ class Router:
 
     def debug(self):
         _log.debug('subscriptions: \n%r', self.channels)
-        asyncio.get_event_loop().call_later(self.debug_interval, self.debug)

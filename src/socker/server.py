@@ -117,7 +117,7 @@ def main(interface='localhost', port=8765, debug=False, auth_backend=None,
          **kw):
     _log.info('Starting socker on {}:{}'.format(interface, port))
 
-    router = Router(debug, debug_interval=10)
+    router = Router(debug)
 
     # Transform {'redis_host': 'redis.example'} into {'host': 'redis.example'}
     redis_opts = {k.replace('redis_', ''): v
