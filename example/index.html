@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title></title>
+    <style>
+        ul {
+            font-family: Consolas, Inconsolata, monospace;
+            white-space: pre;
+        }
+    </style>
+</head>
+<body>
+<ul class="log" id="log">
+</ul>
+<script src="../socker.js/dist/socker.js"></script>
+<script>
+    var wsURI = 'ws://localhost:8765/foo/bar?zab=baz';
+    var Socker = socker.Socker;
+    var socker = new Socker(wsURI);
+
+    socker.log = (function () {
+        var args = [this.toString()].concat(Array.prototype.slice.call(arguments));
+        _log.call(null, args)
+    }).bind(socker)
+
+    var logEm = document.querySelector('#log');
+
+    function _log() {
+        var item = document.createElement('li');
+        var args = [].slice.call(arguments);
+
+        item.innerText = args.join(' ');
+
+        logEm.appendChild(item);
+    }
+</script>
+</body>
+</html>

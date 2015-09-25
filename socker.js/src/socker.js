@@ -1,4 +1,4 @@
-class Message {
+export class Message {
     constructor(name, data) {
         this.name = name;
         this.data = data;
@@ -27,7 +27,8 @@ class Message {
     }
 }
 
-class Socker {
+
+export class Socker {
     constructor(uri, reconnect) {
         // Reconnect automatically
         this.reconnect = (typeof reconnect == 'undefined') ? true : reconnect;
@@ -77,6 +78,9 @@ class Socker {
 
     _onMessage(e) {
         this.log('sock << ' + e.data);
+        if (e.data.indexOf('#') == 0) {  // Message starts with '#'
+            return
+        }
         var message = Message.fromString(e.data);
         var handlers = this.listeners[message.name] || [];
 
@@ -149,7 +153,7 @@ class Socker {
     }
 
     _subscribe(channels) {
-        this.emit('subscribe', channels);
+        this.emit('set-subscriptions', channels);
     }
 
     on(name, cb) {
@@ -208,12 +212,3 @@ class Socker {
         return '<Socker uri=' + this.wsURI + ' status=' + status + '>';
     }
 }
-
-try {
-    window.Socker = Socker;
-} catch (e) {}
-
-module.exports = {
-    Socker: Socker,
-    Message: Message
-};

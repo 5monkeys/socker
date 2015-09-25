@@ -29,17 +29,17 @@ def default_backend(*args):
     return True
 
 
-def get_backend(path):
-    module_path, attr = path.rsplit(':', 1)
+def get_backend(module_path):
+    module_path, attr = module_path.rsplit(':', 1)
 
     module = importlib.import_module(module_path)
 
     return getattr(module, attr)
 
 
-def get_auth_coro(path):
-    if path is not None:
-        auth_backend = get_backend(path)
+def get_auth_coro(module_path):
+    if module_path is not None:
+        auth_backend = get_backend(module_path)
     else:
         auth_backend = default_backend
 

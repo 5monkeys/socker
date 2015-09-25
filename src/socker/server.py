@@ -5,39 +5,49 @@ from functools import partial
 
 import asyncio_redis
 import websockets
-from websockets.exceptions import InvalidState
 
 from .tools import base_words
 from .transport import Message
 from .router import Router
 from .auth import get_auth_coro
+from . import handlers
 
 _log = logging.getLogger(__name__)
 
 
+def check_auth(auth_function, websocket, uri_path, channel):
+    """
+    Helper method for handlers to check channel access.
+
+    :param auth_function: Auth backend method.
+    :param websocket: websocket instance.
+    :param uri_path:
+    :param channel: channel string.
+    :return: boolean "is allowed" value.
+    """
+    auth_passed = yield from auth_function(channel, uri_path)
+
+    if not auth_passed:
+        _log.info('Authentication failed for %s (uri_path: %s) '
+                  'with channel %s',
+                  websocket.name,
+                  uri_path,
+                  channel)
+        return False
+    else:
+        return True
+
+
 @asyncio.coroutine
-def keep_alive(websocket, ping_period=30):
-    while True:
-        yield from asyncio.sleep(ping_period)
-
-        try:
-            yield from websocket.ping()
-        except InvalidState:
-            _log.debug('Got exception when trying to keep connection alive, '
-                       'giving up.')
-            return
-
-
-@asyncio.coroutine
-def websocket_handler(router, check_auth, websocket, path):
+def websocket_handler(router, auth_function, websocket, uri_path):
     websocket.name = base_words(id(websocket))
 
-    channels = set()
+    subscriptions = set()
 
-    _log.info('New websocket %s with path: %s', websocket.name, path)
+    _log.info('New websocket %s with path: %s', websocket.name, uri_path)
 
     # Launch keep-alive coroutine
-    asyncio.async(keep_alive(websocket))
+    asyncio.async(handlers.keep_alive(websocket))
 
     try:
         while True:
@@ -50,36 +60,26 @@ def websocket_handler(router, check_auth, websocket, path):
             message = Message.from_string(data)
             _log.debug('got message: %s', message)
 
-            if message.name == 'subscribe':
-                _channels = set(message.data)
-                old_channels = channels - _channels
-                requested_channels = _channels - channels
+            context = {
+                'websocket': websocket,
+                'router': router,
+                'subscriptions': subscriptions,
+                'message': message,
+                'uri_path': uri_path,
+                'check_auth': partial(check_auth,
+                                      auth_function,
+                                      websocket,
+                                      uri_path)
+            }
 
-                new_channels = set()
-
-                for channel in requested_channels:
-                    auth_passed = yield from check_auth(channel, path)
-
-                    if not auth_passed:
-                        _log.info('Authentication failed for %s (path: %s) '
-                                  'with channel %s',
-                                  websocket.name,
-                                  path,
-                                  channel)
-                    else:
-                        new_channels.add(channel)
-
-                if old_channels:
-                    _log.debug('%s: Unsubscribing from channels %r...',
-                               websocket.name, old_channels)
-                    router.unsubscribe(websocket, *old_channels)
-
-                if requested_channels:
-                    _log.debug('%s: Subscribing to channels %r...',
-                               websocket.name, requested_channels)
-                    router.subscribe(websocket, *requested_channels)
-
-                channels = _channels
+            if message.name == 'set-subscriptions':
+                subscriptions = handlers.set_subscriptions(**context)
+            elif message.name == 'get-subscriptions':
+                yield from websocket.send(handlers.get_subscriptions(**context))
+            elif message.name == 'subscribe':
+                handlers.subscribe(**context)
+            elif message.name == 'unsubscribe':
+                handlers.unsubscribe(**context)
             else:
                 _log.warning('No handler for %s', message)
 
@@ -87,7 +87,7 @@ def websocket_handler(router, check_auth, websocket, path):
     except Exception as e:
         _log.exception('Ouch! %r', e)
     finally:
-        router.unsubscribe(websocket, *channels)
+        router.unsubscribe(websocket, *subscriptions)
 
     yield from websocket.close()
 
@@ -124,12 +124,12 @@ def main(interface='localhost', port=8765, debug=False, auth_backend=None,
                   for k, v in kw.items()
                   if 'redis_' in k}
 
-    check_auth = get_auth_coro(auth_backend)
+    auth_function = get_auth_coro(auth_backend)
 
     asyncio.async(redis_subscriber(router, **redis_opts))
 
     start_server = websockets.serve(
-        partial(websocket_handler, router, check_auth),
+        partial(websocket_handler, router, auth_function),
         interface,
         port)
 

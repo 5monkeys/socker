@@ -7,7 +7,11 @@ class DateTimeEncoder(json.JSONEncoder):
         if isinstance(o, (datetime.datetime, datetime.date)):
             return o.isoformat()
         else:
-            return super().default(o)
+            try:
+                return super().default(o)
+            except TypeError as exc:
+                raise TypeError(
+                    '{} is not JSON serializable.'.format(type(o))) from exc
 
 
 class Message:
