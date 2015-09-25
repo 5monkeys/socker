@@ -72,18 +72,21 @@ def websocket_handler(router, auth_function, websocket, uri_path):
                                       uri_path)
             }
 
-            if message.name == 'set-subscriptions':
-                subscriptions = handlers.set_subscriptions(**context)
-            elif message.name == 'get-subscriptions':
-                yield from websocket.send(handlers.get_subscriptions(**context))
-            elif message.name == 'subscribe':
-                handlers.subscribe(**context)
-            elif message.name == 'unsubscribe':
-                handlers.unsubscribe(**context)
-            else:
-                _log.warning('No handler for %s', message)
+            try:
+                if message.name == 'set-subscriptions':
+                    subscriptions = handlers.set_subscriptions(**context)
+                elif message.name == 'get-subscriptions':
+                    yield from websocket.send(handlers.get_subscriptions(**context))
+                elif message.name == 'subscribe':
+                    handlers.subscribe(**context)
+                elif message.name == 'unsubscribe':
+                    handlers.unsubscribe(**context)
+                else:
+                    _log.warning('No handler for %s', message)
 
-        _log.debug('Closing')
+            except handlers.ChannelTypeError as exc:
+                yield from websocket.send('#{}'.format(str(exc)))
+
     except Exception as e:
         _log.exception('Ouch! %r', e)
     finally:
