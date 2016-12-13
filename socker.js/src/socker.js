@@ -51,6 +51,52 @@ export class Socker {
         this._connect();
     }
 
+    isConnected() {
+        return this.ws.readyState == WebSocket.OPEN;
+    }
+
+    send(message) {
+        if (!this.isConnected()) {
+            this.log('Not connected. Putting message in queue.');
+            this.queue.push(message);
+            return;
+        }
+
+        this._send(message.toString());
+    }
+
+    on(name, cb) {
+        if (!this.listeners.hasOwnProperty(name)) {
+            this.listeners[name] = [];
+            this._subscribeAll();
+        }
+
+        this.listeners[name].push(cb);
+    }
+
+    off(name, func) {
+        var self = this;
+
+        if (!this.listeners.hasOwnProperty(name)) {
+            self.log('Could not off event handlers, no subscribers to', name);
+        }
+
+        this.listeners[name].forEach(function(callback, i) {
+            if (callback == func) {
+                this.listeners[name].splice(i);
+            }
+        }.bind(this));
+
+        // Remove channel key if empty
+        if (!self.listeners[name].length) {
+            delete self.listeners[name];
+        }
+    }
+
+    emit(name, data) {
+        this.send(new Message(name, data).toString());
+    }
+
     _connect(_reconnecting) {
         this.log('socker connecting to', this.wsURI);
 
@@ -107,10 +153,6 @@ export class Socker {
         this._connect(true);  // Indicate to _connect that we are reconnecting.
     }
 
-    isConnected() {
-        return this.ws.readyState == WebSocket.OPEN;
-    }
-
     _sendAll() {
         this.queue.forEach(function (message) {
             this._send(message.toString());
@@ -121,16 +163,6 @@ export class Socker {
         this.log('sock >> ' + string);
 
         this.ws.send(string)
-    }
-
-    send(message) {
-        if (!this.isConnected()) {
-            this.log('Not connected. Putting message in queue.');
-            this.queue.push(message);
-            return;
-        }
-
-        this._send(message.toString());
     }
 
     _subscribeAll() {
@@ -154,38 +186,6 @@ export class Socker {
 
     _subscribe(channels) {
         this.emit('set-subscriptions', channels);
-    }
-
-    on(name, cb) {
-        if (!this.listeners.hasOwnProperty(name)) {
-            this.listeners[name] = [];
-            this._subscribeAll();
-        }
-
-        this.listeners[name].push(cb);
-    }
-
-    off(name, func) {
-        var self = this;
-
-        if (!this.listeners.hasOwnProperty(name)) {
-            self.log('Could not off event handlers, no subscribers to', name);
-        }
-
-        this.listeners[name].forEach(function(callback, i) {
-            if (callback == func) {
-                this.listeners[name].splice(i);
-            }
-        }.bind(this));
-
-        // Remove channel key if empty
-        if (!self.listeners[name].length) {
-            delete self.listeners[name];
-        }
-    }
-
-    emit(name, data) {
-        this.send(new Message(name, data).toString());
     }
 
     log() {
