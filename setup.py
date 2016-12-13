@@ -11,6 +11,7 @@ from setuptools import setup, find_packages
 name = 'socker'  # PyPI name
 package_name = name.replace('-', '_')  # Python module name
 package_path = 'src'  # Where does the package live?
+version_file = path.join(path.dirname(__file__), 'VERSION')
 
 here = path.dirname(path.abspath(__file__))
 
@@ -30,23 +31,11 @@ except Exception:
 
 def get_version():
     """
-    Get the version from a version module inside our package. This is
-    necessary since we import our main modules in package/__init__.py,
-    which will cause ImportErrors if we try to import package/version.py
-    using the regular import mechanism.
-
-    :return: Formatted version string
+    Get the version from version_file
     """
-    version = {}
-
-    version_file = path.join(package_path, package_name, 'version.py')
-
-    # exec the version module
-    with open(version_file) as fp:
-        exec(fp.read(), version)
-
-    # Call the module function 'get_version'
-    return version['get_version']()
+    return ''.join(
+        line for line in open(version_file)
+        if not line.startswith('#')).strip()
 
 
 def get_requirements(filename):

@@ -1,11 +1,11 @@
 {
   "name": "socker.js",
-  "version": "2.0b3",
+  "version": "2.0.0-beta.4",
   "description": "socker client",
   "main": "dist/socker.js",
-  "directories": {
-    "example": "example"
-  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "prepublish": "gulp"

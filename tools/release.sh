@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
 # Utility script for socker python package release
-#set -o xtrace
+set -o xtrace
 
-function get_package_version {
-    python -c 'import socker.version; print(socker.version.__version__)'
+function get_python_package_version {
+    python setup.py egg_info > /dev/null
+
+    cat src/socker.egg-info/PKG-INFO \
+        | grep -e '^Version: ' \
+        | sed 's/^Version: //g'
 }
 
 function info {
@@ -16,7 +20,7 @@ function fatal {
 }
 
 function update_version {
-    echo 'Current socker version:' $(get_package_version)
+    echo 'Current socker version:' $(get_python_package_version)
     echo -n 'Do you want to update the version? [y/n]: '
     read choice
     case $choice in
@@ -41,7 +45,7 @@ function build_python_package_distribution_files {
 }
 
 function upload_package {
-    package_files=dist/socker-$(get_package_version)*
+    package_files=dist/socker-$(get_python_package_version)*
     info 'Uploading package_files:' $package_files
     twine upload $package_files || fatal 'Could not upload package files'
 }
