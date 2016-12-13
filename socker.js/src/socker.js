@@ -57,7 +57,7 @@ export class Socker {
 
   send(message) {
     if (!this.isConnected()) {
-      this.log('Not connected. Putting message in queue.');
+      this._log('Not connected. Putting message in queue.');
       this.queue.push(message);
       return;
     }
@@ -78,7 +78,7 @@ export class Socker {
     const self = this;
 
     if (!this.listeners.hasOwnProperty(name)) {
-      self.log('Could not off event handlers, no subscribers to', name);
+      self._log('Could not off event handlers, no subscribers to', name);
     }
 
     this.listeners[name].forEach((callback, i) => {
@@ -98,7 +98,7 @@ export class Socker {
   }
 
   _connect(_reconnecting) {
-    this.log('socker connecting to', this.wsURI);
+    this._log('socker connecting to', this.wsURI);
 
     this.ws = new WebSocket(this.wsURI);
 
@@ -108,7 +108,7 @@ export class Socker {
       }
       this._reconnectTimeoutID = null;
 
-      this.log('Connected');
+      this._log('Connected');
 
       if (_reconnecting) {
         this._subscribeAll();
@@ -123,7 +123,7 @@ export class Socker {
   }
 
   _onMessage(e) {
-    this.log('sock << ' + e.data);
+    this._log('sock << ' + e.data);
     if (e.data.indexOf('#') == 0) {  // Message starts with '#'
       return
     }
@@ -136,11 +136,11 @@ export class Socker {
   }
 
   _onClose(e) {
-    this.log('Connection closed');
+    this._log('Connection closed');
     this._closed = true;
 
     if (this.reconnect) {
-      this.log('Reconnecting in ' + this.reconnectTimeout / 1000
+      this._log('Reconnecting in ' + this.reconnectTimeout / 1000
         + ' seconds.');
 
       this._reconnectTimeoutID = setTimeout(
@@ -149,7 +149,7 @@ export class Socker {
   }
 
   _reconnect() {
-    this.log('reconnecting...');
+    this._log('reconnecting...');
     this._connect(true);  // Indicate to _connect that we are reconnecting.
   }
 
@@ -160,7 +160,7 @@ export class Socker {
   }
 
   _send(string) {
-    this.log('sock >> ' + string);
+    this._log('sock >> ' + string);
 
     this.ws.send(string)
   }
@@ -172,7 +172,7 @@ export class Socker {
       if (this._bundleTimeoutID) {
         clearTimeout(this._bundleTimeoutID);
       }
-      this.log('Bundling subscriptions');
+      this._log('Bundling subscriptions');
 
       this._bundleTimeoutID = setTimeout(() => {
         this._subscribe(channels);
@@ -188,7 +188,7 @@ export class Socker {
     this.emit('set-subscriptions', channels);
   }
 
-  log(...args) {
+  _log(...args) {
     if (this.debug) {
       console.log.apply(console, args);
     }
