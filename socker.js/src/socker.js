@@ -1,212 +1,212 @@
 export class Message {
-    constructor(name, data) {
-        this.name = name;
-        this.data = data;
+  constructor(name, data) {
+    this.name = name;
+    this.data = data;
+  }
+
+  static fromString(string) {
+    if ('string' !== typeof string) {
+      const msg = 'SockMessage.fromString must get a string as argument';
+
+      if (console.warn) {
+        console.warn(msg);
+      } else {
+        throw new Error(msg);
+      }
     }
 
-    static fromString(string) {
-        if ('string' !== typeof string) {
-            const msg = 'SockMessage.fromString must get a string as argument';
+    const values = string.split('|');
+    const name = values[0];
+    const data = JSON.parse(values[1]);
 
-            if (console.warn) {
-                console.warn(msg);
-            } else {
-                throw new Error(msg);
-            }
-        }
+    return new Message(name, data);
+  }
 
-        const values = string.split('|');
-        const name = values[0];
-        const data = JSON.parse(values[1]);
-
-        return new Message(name, data);
-    }
-
-    toString() {
-        return this.name + '|' + JSON.stringify(this.data);
-    }
+  toString() {
+    return this.name + '|' + JSON.stringify(this.data);
+  }
 }
 
 
 export class Socker {
-    constructor(uri, reconnect) {
-        // Reconnect automatically
-        this.reconnect = (typeof reconnect == 'undefined') ? true : reconnect;
+  constructor(uri, reconnect) {
+    // Reconnect automatically
+    this.reconnect = (typeof reconnect == 'undefined') ? true : reconnect;
 
-        // Print logging
-        this.debug = true;
+    // Print logging
+    this.debug = true;
 
-        this.wsURI = uri;
+    this.wsURI = uri;
 
-        this.listeners = {};
-        this.queue = [];
+    this.listeners = {};
+    this.queue = [];
 
-        this._reconnectTimeoutID = null;
-        this.reconnectTimeout = 15000;
+    this._reconnectTimeoutID = null;
+    this.reconnectTimeout = 15000;
 
-        this.bundleSubscriptions = true;
-        this.bundleTimeout = 1;
-        this._bundleTimeoutID = null;
+    this.bundleSubscriptions = true;
+    this.bundleTimeout = 1;
+    this._bundleTimeoutID = null;
 
-        this._connect();
+    this._connect();
+  }
+
+  isConnected() {
+    return this.ws.readyState == WebSocket.OPEN;
+  }
+
+  send(message) {
+    if (!this.isConnected()) {
+      this.log('Not connected. Putting message in queue.');
+      this.queue.push(message);
+      return;
     }
 
-    isConnected() {
-        return this.ws.readyState == WebSocket.OPEN;
+    this._send(message.toString());
+  }
+
+  on(name, cb) {
+    if (!this.listeners.hasOwnProperty(name)) {
+      this.listeners[name] = [];
+      this._subscribeAll();
     }
 
-    send(message) {
-        if (!this.isConnected()) {
-            this.log('Not connected. Putting message in queue.');
-            this.queue.push(message);
-            return;
-        }
+    this.listeners[name].push(cb);
+  }
 
-        this._send(message.toString());
+  off(name, func) {
+    const self = this;
+
+    if (!this.listeners.hasOwnProperty(name)) {
+      self.log('Could not off event handlers, no subscribers to', name);
     }
 
-    on(name, cb) {
-        if (!this.listeners.hasOwnProperty(name)) {
-            this.listeners[name] = [];
-            this._subscribeAll();
-        }
+    this.listeners[name].forEach((callback, i) => {
+      if (callback == func) {
+        this.listeners[name].splice(i);
+      }
+    });
 
-        this.listeners[name].push(cb);
+    // Remove channel key if empty
+    if (!self.listeners[name].length) {
+      delete this.listeners[name];
     }
+  }
 
-    off(name, func) {
-        const self = this;
+  emit(name, data) {
+    this.send(new Message(name, data).toString());
+  }
 
-        if (!this.listeners.hasOwnProperty(name)) {
-            self.log('Could not off event handlers, no subscribers to', name);
-        }
+  _connect(_reconnecting) {
+    this.log('socker connecting to', this.wsURI);
 
-        this.listeners[name].forEach((callback, i) => {
-            if (callback == func) {
-                this.listeners[name].splice(i);
-            }
-        });
+    this.ws = new WebSocket(this.wsURI);
 
-        // Remove channel key if empty
-        if (!self.listeners[name].length) {
-            delete this.listeners[name];
-        }
+    this.ws.addEventListener('open', function (e) {
+      if (this._reconnectTimeoutID) {
+        clearTimeout(this._reconnectTimeoutID);
+      }
+      this._reconnectTimeoutID = null;
+
+      this.log('Connected');
+
+      if (_reconnecting) {
+        this._subscribeAll();
+      }
+
+      this._sendAll();
+    }.bind(this));
+
+    this.ws.addEventListener('message', this._onMessage.bind(this));
+
+    this.ws.addEventListener('close', this._onClose.bind(this));
+  }
+
+  _onMessage(e) {
+    this.log('sock << ' + e.data);
+    if (e.data.indexOf('#') == 0) {  // Message starts with '#'
+      return
     }
+    const message = Message.fromString(e.data);
+    const handlers = this.listeners[message.name] || [];
 
-    emit(name, data) {
-        this.send(new Message(name, data).toString());
+    handlers.forEach(function (handler) {
+      handler(message.data, message, e);
+    });
+  }
+
+  _onClose(e) {
+    this.log('Connection closed');
+    this._closed = true;
+
+    if (this.reconnect) {
+      this.log('Reconnecting in ' + this.reconnectTimeout / 1000
+        + ' seconds.');
+
+      this._reconnectTimeoutID = setTimeout(
+        this._reconnect.bind(this), this.reconnectTimeout);
     }
+  }
 
-    _connect(_reconnecting) {
-        this.log('socker connecting to', this.wsURI);
+  _reconnect() {
+    this.log('reconnecting...');
+    this._connect(true);  // Indicate to _connect that we are reconnecting.
+  }
 
-        this.ws = new WebSocket(this.wsURI);
+  _sendAll() {
+    this.queue.forEach(function (message) {
+      this._send(message.toString());
+    }.bind(this));
+  }
 
-        this.ws.addEventListener('open', function(e) {
-            if (this._reconnectTimeoutID) {
-                clearTimeout(this._reconnectTimeoutID);
-            }
-            this._reconnectTimeoutID = null;
+  _send(string) {
+    this.log('sock >> ' + string);
 
-            this.log('Connected');
+    this.ws.send(string)
+  }
 
-            if (_reconnecting) {
-                this._subscribeAll();
-            }
+  _subscribeAll() {
+    const channels = Object.keys(this.listeners);
 
-            this._sendAll();
-        }.bind(this));
+    if (this.bundleSubscriptions) {
+      if (this._bundleTimeoutID) {
+        clearTimeout(this._bundleTimeoutID);
+      }
+      this.log('Bundling subscriptions');
 
-        this.ws.addEventListener('message', this._onMessage.bind(this));
-
-        this.ws.addEventListener('close', this._onClose.bind(this));
-    }
-
-    _onMessage(e) {
-        this.log('sock << ' + e.data);
-        if (e.data.indexOf('#') == 0) {  // Message starts with '#'
-            return
-        }
-        const message = Message.fromString(e.data);
-        const handlers = this.listeners[message.name] || [];
-
-        handlers.forEach(function (handler) {
-            handler(message.data, message, e);
-        });
-    }
-
-    _onClose(e) {
-        this.log('Connection closed');
-        this._closed = true;
-
-        if (this.reconnect) {
-            this.log('Reconnecting in ' + this.reconnectTimeout / 1000
-                      + ' seconds.');
-
-            this._reconnectTimeoutID = setTimeout(
-                this._reconnect.bind(this), this.reconnectTimeout);
-        }
-    }
-
-    _reconnect() {
-        this.log('reconnecting...');
-        this._connect(true);  // Indicate to _connect that we are reconnecting.
-    }
-
-    _sendAll() {
-        this.queue.forEach(function (message) {
-            this._send(message.toString());
-        }.bind(this));
-    }
-
-    _send(string) {
-        this.log('sock >> ' + string);
-
-        this.ws.send(string)
-    }
-
-    _subscribeAll() {
-        const channels = Object.keys(this.listeners);
-
-        if (this.bundleSubscriptions) {
-            if (this._bundleTimeoutID) {
-                clearTimeout(this._bundleTimeoutID);
-            }
-            this.log('Bundling subscriptions');
-
-            this._bundleTimeoutID = setTimeout(() => {
-                this._subscribe(channels);
-            }, this.bundleTimeout);
-
-            return;
-        }
-
+      this._bundleTimeoutID = setTimeout(() => {
         this._subscribe(channels);
+      }, this.bundleTimeout);
+
+      return;
     }
 
-    _subscribe(channels) {
-        this.emit('set-subscriptions', channels);
+    this._subscribe(channels);
+  }
+
+  _subscribe(channels) {
+    this.emit('set-subscriptions', channels);
+  }
+
+  log(...args) {
+    if (this.debug) {
+      console.log.apply(console, args);
+    }
+  }
+
+  toString() {
+    let status = 'UNKNOWN';
+    const stateMap = {
+      0: 'CONNECTING',
+      1: 'OPEN',
+      2: 'CLOSING',
+      3: 'CLOSED'
+    };
+
+    if (this.ws) {
+      status = stateMap[this.ws.readyState];
     }
 
-    log(...args) {
-        if (this.debug) {
-            console.log.apply(console, args);
-        }
-    }
-
-    toString() {
-        let status = 'UNKNOWN';
-        const stateMap = {
-          0: 'CONNECTING',
-          1: 'OPEN',
-          2: 'CLOSING',
-          3: 'CLOSED'
-        };
-
-        if (this.ws) {
-            status = stateMap[this.ws.readyState];
-        }
-
-        return '<Socker uri=' + this.wsURI + ' status=' + status + '>';
-    }
+    return '<Socker uri=' + this.wsURI + ' status=' + status + '>';
+  }
 }
