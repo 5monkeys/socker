@@ -6,7 +6,7 @@ export class Message {
 
     static fromString(string) {
         if ('string' !== typeof string) {
-            var msg = 'SockMessage.fromString must get a string as argument';
+            const msg = 'SockMessage.fromString must get a string as argument';
 
             if (console.warn) {
                 console.warn(msg);
@@ -15,9 +15,9 @@ export class Message {
             }
         }
 
-        var values = string.split('|');
-        var name = values[0];
-        var data = JSON.parse(values[1]);
+        const values = string.split('|');
+        const name = values[0];
+        const data = JSON.parse(values[1]);
 
         return new Message(name, data);
     }
@@ -75,21 +75,21 @@ export class Socker {
     }
 
     off(name, func) {
-        var self = this;
+        const self = this;
 
         if (!this.listeners.hasOwnProperty(name)) {
             self.log('Could not off event handlers, no subscribers to', name);
         }
 
-        this.listeners[name].forEach(function(callback, i) {
+        this.listeners[name].forEach((callback, i) => {
             if (callback == func) {
                 this.listeners[name].splice(i);
             }
-        }.bind(this));
+        });
 
         // Remove channel key if empty
         if (!self.listeners[name].length) {
-            delete self.listeners[name];
+            delete this.listeners[name];
         }
     }
 
@@ -127,8 +127,8 @@ export class Socker {
         if (e.data.indexOf('#') == 0) {  // Message starts with '#'
             return
         }
-        var message = Message.fromString(e.data);
-        var handlers = this.listeners[message.name] || [];
+        const message = Message.fromString(e.data);
+        const handlers = this.listeners[message.name] || [];
 
         handlers.forEach(function (handler) {
             handler(message.data, message, e);
@@ -166,8 +166,7 @@ export class Socker {
     }
 
     _subscribeAll() {
-        var self = this;
-        var channels = Object.keys(this.listeners);
+        const channels = Object.keys(this.listeners);
 
         if (this.bundleSubscriptions) {
             if (this._bundleTimeoutID) {
@@ -175,9 +174,10 @@ export class Socker {
             }
             this.log('Bundling subscriptions');
 
-            this._bundleTimeoutID = setTimeout(function () {
-                self._subscribe(channels);
+            this._bundleTimeoutID = setTimeout(() => {
+                this._subscribe(channels);
             }, this.bundleTimeout);
+
             return;
         }
 
@@ -188,21 +188,19 @@ export class Socker {
         this.emit('set-subscriptions', channels);
     }
 
-    log() {
-        var args = [this.toString()].concat(Array.prototype.slice.call(arguments));
-
+    log(...args) {
         if (this.debug) {
             console.log.apply(console, args);
         }
     }
 
     toString() {
-        var status = 'UNKNOWN';
-        var stateMap = {
-            0: 'CONNECTING',
-            1: 'OPEN',
-            2: 'CLOSING',
-            3: 'CLOSED'
+        let status = 'UNKNOWN';
+        const stateMap = {
+          0: 'CONNECTING',
+          1: 'OPEN',
+          2: 'CLOSING',
+          3: 'CLOSED'
         };
 
         if (this.ws) {
