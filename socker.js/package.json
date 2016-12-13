@@ -26,9 +26,7 @@
   "homepage": "https://github.com/5monkeys/socker",
   "devDependencies": {
     "gulp": "^3.8.10",
+    "gulp-babel": "^5.2.1",
     "gulp-util": "^3.0.2"
-  },
-  "dependencies": {
-    "gulp-babel": "^5.2.1"
   }
 }
