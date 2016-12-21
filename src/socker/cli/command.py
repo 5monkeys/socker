@@ -33,7 +33,7 @@ from docopt import docopt
 
 from . import log
 from .. import server
-from ..version import __version__
+from ..version import get_version
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 class Interface(object):
 
     def __init__(self):
-        self.opts = docopt(__doc__, version='socker v{}'.format(__version__))
+        self.opts = docopt(__doc__, version='socker v{}'.format(get_version()))
         self.setup_logging()
         self.register_signals()
         self.start()
