@@ -29,19 +29,21 @@ Options:
 import asyncio
 import logging
 import signal
+
+import pkg_resources
 from docopt import docopt
 
 from . import log
 from .. import server
-from ..version import __version__
 
+version = pkg_resources.require('socker')[0].version
 logger = logging.getLogger(__name__)
 
 
 class Interface(object):
 
     def __init__(self):
-        self.opts = docopt(__doc__, version='socker v{}'.format(__version__))
+        self.opts = docopt(__doc__, version='socker v{}'.format(version))
         self.setup_logging()
         self.register_signals()
         self.start()
