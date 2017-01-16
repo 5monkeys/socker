@@ -44,7 +44,7 @@ def websocket_handler(router, auth_function, websocket, uri_path):
 
     subscriptions = set()
 
-    _log.info('New websocket %s with path: %s', websocket.name, uri_path)
+    _log.info('%s: New websocket with path: %s', websocket.name, uri_path)
 
     # Launch keep-alive coroutine
     asyncio.async(handlers.keep_alive(websocket))
@@ -54,11 +54,11 @@ def websocket_handler(router, auth_function, websocket, uri_path):
             data = yield from websocket.recv()
 
             if data is None:
-                _log.debug('Client closed websocket')
+                _log.debug('%s: Client closed websocket', websocket.name)
                 break
 
             message = Message.from_string(data)
-            _log.debug('got message: %s', message)
+            _log.debug('%s: got message: %s', websocket.name, message)
 
             context = {
                 'websocket': websocket,
@@ -76,19 +76,22 @@ def websocket_handler(router, auth_function, websocket, uri_path):
                 if message.name == 'set-subscriptions':
                     subscriptions = handlers.set_subscriptions(**context)
                 elif message.name == 'get-subscriptions':
-                    yield from websocket.send(handlers.get_subscriptions(**context))
+                    yield from websocket.send(handlers.get_subscriptions(
+                        **context))
                 elif message.name == 'subscribe':
                     handlers.subscribe(**context)
                 elif message.name == 'unsubscribe':
                     handlers.unsubscribe(**context)
                 else:
-                    _log.warning('No handler for %s', message)
+                    _log.warning('%s: No handler for %s', websocket.name,
+                                 message)
 
             except handlers.ChannelTypeError as exc:
+                _log.exception('%s: Got ChannelTypeError', websocket.name)
                 yield from websocket.send('#{}'.format(str(exc)))
 
-    except Exception as e:
-        _log.exception('Ouch! %r', e)
+    except Exception:
+        _log.exception('%s: Ouch', websocket.name)
     finally:
         router.unsubscribe(websocket, *subscriptions)
 

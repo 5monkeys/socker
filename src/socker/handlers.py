@@ -15,8 +15,10 @@ def keep_alive(websocket, ping_period=30):
         try:
             yield from websocket.ping()
         except InvalidState:
-            _log.debug('Got exception when trying to keep connection alive, '
-                       'giving up.')
+            _log.exception(
+                '%s: Got exception when trying to keep connection alive, '
+                'giving up.',
+                websocket.name)
             return
 
 
