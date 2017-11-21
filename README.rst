@@ -78,6 +78,18 @@ Any websocket clients subscribed to
 
 will receive that message.
 
+-------------------------------
+Releasing a new version to PyPi
+-------------------------------
+
+1. Bump the version in ``VERSION``.
+2. Commit the change and tag it with the new version identifier.
+3. Build a source distribution: ``python setup.py sdist``.
+4. Build a wheel: ``python setup.py bdist_wheel``.
+5. Upload the built distribution using Twine_: ``twine upload dist/*``.
+
+.. _Twine: https://github.com/pypa/twine
+
 ------
 Thanks
 ------
