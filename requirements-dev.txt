@@ -1,4 +1,4 @@
 keyring==5.3
-pyxdg==0.25
+pyxdg==0.26
 twine==1.5.0
 wheel==0.24.0
