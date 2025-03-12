@@ -38,8 +38,7 @@ def check_auth(auth_function, websocket, uri_path, channel):
         return True
 
 
-@asyncio.coroutine
-def websocket_handler(router, auth_function, websocket, uri_path):
+async def websocket_handler(router, auth_function, websocket, uri_path):
     websocket.name = base_words(id(websocket))
 
     subscriptions = set()
@@ -47,11 +46,11 @@ def websocket_handler(router, auth_function, websocket, uri_path):
     _log.info('%s: New websocket with path: %s', websocket.name, uri_path)
 
     # Launch keep-alive coroutine
-    asyncio.async(handlers.keep_alive(websocket))
+    await handlers.keep_alive(websocket)
 
     try:
         while True:
-            data = yield from websocket.recv()
+            data = await websocket.recv()
 
             if data is None:
                 _log.debug('%s: Client closed websocket', websocket.name)
@@ -76,7 +75,7 @@ def websocket_handler(router, auth_function, websocket, uri_path):
                 if message.name == 'set-subscriptions':
                     subscriptions = handlers.set_subscriptions(**context)
                 elif message.name == 'get-subscriptions':
-                    yield from websocket.send(handlers.get_subscriptions(
+                    await websocket.send(handlers.get_subscriptions(
                         **context))
                 elif message.name == 'subscribe':
                     handlers.subscribe(**context)
@@ -88,24 +87,23 @@ def websocket_handler(router, auth_function, websocket, uri_path):
 
             except handlers.ChannelTypeError as exc:
                 _log.exception('%s: Got ChannelTypeError', websocket.name)
-                yield from websocket.send('#{}'.format(str(exc)))
+                await websocket.send('#{}'.format(str(exc)))
 
     except Exception:
         _log.exception('%s: Ouch', websocket.name)
     finally:
         router.unsubscribe(websocket, *subscriptions)
 
-    yield from websocket.close()
+    await websocket.close()
 
 
-@asyncio.coroutine
-def redis_subscriber(router, **kw):
-    connection = yield from asyncio_redis.Connection.create(**kw)
-    subscriber = yield from connection.start_subscribe()
-    yield from subscriber.subscribe(['socker'])
+async def redis_subscriber(router, **kw):
+    connection = await asyncio_redis.Connection.create(**kw)
+    subscriber = await connection.start_subscribe()
+    await subscriber.subscribe(['socker'])
 
     while True:
-        pub = yield from subscriber.next_published()
+        pub = await subscriber.next_published()
         _log.debug('From redis: %r', pub)
 
         message = Message.from_string(pub.value)
@@ -116,10 +114,10 @@ def redis_subscriber(router, **kw):
             # Send the message with the same channel the client used to
             # subscribe.
             channel_message = Message(channel, message.data)
-            yield from websocket.send(str(channel_message))
+            await websocket.send(str(channel_message))
 
 
-def main(interface='localhost', port=8765, debug=False, auth_backend=None,
+async def main(interface='localhost', port=8765, debug=False, auth_backend=None,
          **kw):
     _log.info('Starting socker on {}:{}'.format(interface, port))
 
@@ -132,7 +130,7 @@ def main(interface='localhost', port=8765, debug=False, auth_backend=None,
 
     auth_function = get_auth_coro(auth_backend)
 
-    asyncio.async(redis_subscriber(router, **redis_opts))
+    await redis_subscriber(router, **redis_opts)
 
     start_server = websockets.serve(
         partial(websocket_handler, router, auth_function),
@@ -144,4 +142,4 @@ def main(interface='localhost', port=8765, debug=False, auth_backend=None,
 
 
 if __name__ == '__main__':
-    main()
+    asyncio.run(main())

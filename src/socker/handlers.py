@@ -7,13 +7,12 @@ from websockets.exceptions import InvalidState
 _log = logging.getLogger(__name__)
 
 
-@asyncio.coroutine
-def keep_alive(websocket, ping_period=30):
+async def keep_alive(websocket, ping_period=30):
     while True:
-        yield from asyncio.sleep(ping_period)
+        await asyncio.sleep(ping_period)
 
         try:
-            yield from websocket.ping()
+            await websocket.ping()
         except InvalidState:
             _log.exception(
                 '%s: Got exception when trying to keep connection alive, '

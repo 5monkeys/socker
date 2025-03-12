@@ -46,8 +46,7 @@ def get_auth_coro(module_path):
     return partial(check_auth, auth_backend)
 
 
-@asyncio.coroutine
-def check_auth(backend, channel, path):
+async def check_auth(backend, channel, path):
     url = urlsplit(path)
     params = ImmutableMultiDict(parse_qsl(url.query))
 

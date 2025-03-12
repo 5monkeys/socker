@@ -69,12 +69,12 @@ class Interface(object):
         for key in ['redis_port', 'redis_db']:  # Integer arguments
             redis_opts[key] = int(redis_opts[key])
 
-        server.main(
+        asyncio.run(server.main(
             interface=self.opts['-i'],
             port=int(self.opts['-p']),
             debug=self.opts['-v'],
             auth_backend=self.opts['--auth-backend'],
-            **redis_opts)
+            **redis_opts))
 
     def reload(self):
         logger.warn('--- SIGHUP ---')
