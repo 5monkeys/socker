@@ -10,8 +10,7 @@ class DateTimeEncoder(json.JSONEncoder):
             try:
                 return super().default(o)
             except TypeError as exc:
-                raise TypeError(
-                    '{} is not JSON serializable.'.format(type(o))) from exc
+                raise TypeError("{} is not JSON serializable.".format(type(o))) from exc
 
 
 class Message:
@@ -23,9 +22,9 @@ class Message:
 
     @classmethod
     def from_string(cls, string):
-        name, json_data = string.split('|', 1)
+        name, json_data = string.split("|", 1)
 
         return cls(name, json.loads(json_data))
 
     def __str__(self):
-        return self.name + '|' + json.dumps(self.data, cls=DateTimeEncoder)
+        return self.name + "|" + json.dumps(self.data, cls=DateTimeEncoder)

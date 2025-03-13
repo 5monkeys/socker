@@ -19,7 +19,7 @@ class Tree(defaultdict, dict):
 
         :param path: dot separated tree path
         """
-        keys = iter(path.split('.'))
+        keys = iter(path.split("."))
         key, node = None, self
 
         while node is not None:
@@ -39,9 +39,7 @@ class Tree(defaultdict, dict):
         :param paths: dot separated tree paths
         """
         for path in paths:
-            leaf = reduce(lambda n, p: n[p],
-                          path.split('.'),
-                          self)
+            leaf = reduce(lambda n, p: n[p], path.split("."), self)
 
             leaf.members.add(member)
 
@@ -78,8 +76,8 @@ class Tree(defaultdict, dict):
         for _, node, is_leaf in self.walk(path):
             if is_leaf:
                 members.update(node.members)
-            elif '*' in node:
-                members.update(node['*'].members)
+            elif "*" in node:
+                members.update(node["*"].members)
 
         return members
 
@@ -100,7 +98,7 @@ class Tree(defaultdict, dict):
 
             if is_leaf:
                 for member in node.members:
-                    yield '.'.join(qualified_path), member
-            elif '*' in node:
-                for member in node['*'].members:
-                    yield '.'.join(qualified_path + ['*']), member
+                    yield ".".join(qualified_path), member
+            elif "*" in node:
+                for member in node["*"].members:
+                    yield ".".join(qualified_path + ["*"]), member

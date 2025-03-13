@@ -40,7 +40,7 @@ def to_base(integer, base_list=None):
     'OneZeroOneZeroOneZero'
     """
     if base_list is None:
-        raise ValueError('base_list is not defined')
+        raise ValueError("base_list is not defined")
 
     new_base = len(base_list)
 
@@ -52,7 +52,7 @@ def to_base(integer, base_list=None):
         current, remainder = divmod(current, new_base)
         result.append(base_list[remainder])
 
-    return ''.join(reversed(result))
+    return "".join(reversed(result))
 
 
 def base_words(integer):
@@ -66,14 +66,14 @@ def base_words(integer):
     :rtype: str()
     """
     if integer < 0:
-        raise ValueError('base_words does not support negative integers')
+        raise ValueError("base_words does not support negative integers")
 
     # Save the words in an in-memory cache attached to this method.
-    if not hasattr(base_words, 'cache'):
+    if not hasattr(base_words, "cache"):
         words = []
-        for word in open('/usr/share/dict/words', 'r'):
+        for word in open("/usr/share/dict/words", "r"):
             # Filter out plurals, possessive form and conjugations.
-            if '\'' not in word:
+            if "'" not in word:
                 words.append(word.strip().capitalize())
 
         base_words.cache = list(sorted(set(words)))

@@ -11,8 +11,8 @@ _log = logging.getLogger(__name__)
 
 
 def example_backend(channel, path, params):
-    _log.debug('channel: %s, path: %s, params: %s', channel, path, params)
-    if params.get('secret') == '42':
+    _log.debug("channel: %s, path: %s, params: %s", channel, path, params)
+    if params.get("secret") == "42":
         return True
 
     return False
@@ -25,12 +25,12 @@ def default_backend(*args):
     :param args:
     :return:
     """
-    _log.debug('default backend called with %s', args)
+    _log.debug("default backend called with %s", args)
     return True
 
 
 def get_backend(module_path):
-    module_path, attr = module_path.rsplit(':', 1)
+    module_path, attr = module_path.rsplit(":", 1)
 
     module = importlib.import_module(module_path)
 
@@ -46,14 +46,15 @@ def get_auth_coro(module_path):
     return partial(check_auth, auth_backend)
 
 
-@asyncio.coroutine
-def check_auth(backend, channel, path):
+async def check_auth(backend, channel, path):
     url = urlsplit(path)
     params = ImmutableMultiDict(parse_qsl(url.query))
 
-    _log.debug('Checking auth to channel %s for path: %s, params: %s',
-               channel,
-               url.path,
-               params)
+    _log.debug(
+        "Checking auth to channel %s for path: %s, params: %s",
+        channel,
+        url.path,
+        params,
+    )
 
     return backend(channel, url.path, params)
