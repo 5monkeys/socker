@@ -3,9 +3,9 @@ import asyncio
 
 from functools import partial
 from http import HTTPStatus
+from websockets.asyncio.server import serve
 
 import asyncio_redis
-from websockets.asyncio.server import serve
 
 from .tools import base_words
 from .transport import Message
