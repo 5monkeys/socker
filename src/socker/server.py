@@ -2,9 +2,10 @@ import logging
 import asyncio
 
 from functools import partial
+from http import HTTPStatus
 
 import asyncio_redis
-import websockets
+from websockets.asyncio.server import serve
 
 from .tools import base_words
 from .transport import Message
@@ -47,7 +48,7 @@ async def websocket_handler(router, auth_function, websocket, uri_path):
     _log.info("%s: New websocket with path: %s", websocket.name, uri_path)
 
     # Launch keep-alive coroutine
-    await handlers.keep_alive(websocket)
+    asyncio.ensure_future(handlers.keep_alive(websocket))
 
     try:
         while True:
@@ -113,6 +114,11 @@ async def redis_subscriber(router, **kw):
             await websocket.send(str(channel_message))
 
 
+def health_check(connection, request):
+    if request.path == "/healthz":
+        return connection.respond(HTTPStatus.OK, "OK\n")
+
+
 async def main(interface="localhost", port=8765, debug=False, auth_backend=None, **kw):
     _log.info("Starting socker on {}:{}".format(interface, port))
 
@@ -123,14 +129,15 @@ async def main(interface="localhost", port=8765, debug=False, auth_backend=None,
 
     auth_function = get_auth_coro(auth_backend)
 
-    await redis_subscriber(router, **redis_opts)
+    asyncio.ensure_future(redis_subscriber(router, **redis_opts))
 
-    start_server = websockets.serve(
-        partial(websocket_handler, router, auth_function), interface, port
-    )
-
-    asyncio.get_event_loop().run_until_complete(start_server)
-    asyncio.get_event_loop().run_forever()
+    async with serve(
+        handler=partial(websocket_handler, router, auth_function),
+        host=interface,
+        port=port,
+        process_request=health_check,
+    ) as server:
+        await server.serve_forever()
 
 
 if __name__ == "__main__":
