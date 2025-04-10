@@ -16,23 +16,21 @@ from . import handlers
 _log = logging.getLogger(__name__)
 
 
-def check_auth(auth_function, websocket, uri_path, channel):
+def check_auth(auth_function, websocket, channel):
     """
     Helper method for handlers to check channel access.
 
     :param auth_function: Auth backend method.
     :param websocket: websocket instance.
-    :param uri_path:
     :param channel: channel string.
     :return: boolean "is allowed" value.
     """
-    auth_passed = yield from auth_function(channel, uri_path)
+    auth_passed = yield from auth_function(channel)
 
     if not auth_passed:
         _log.info(
-            "Authentication failed for %s (uri_path: %s) " "with channel %s",
+            "Authentication failed for %s " "with channel %s",
             websocket.name,
-            uri_path,
             channel,
         )
         return False
@@ -40,12 +38,12 @@ def check_auth(auth_function, websocket, uri_path, channel):
         return True
 
 
-async def websocket_handler(router, auth_function, websocket, uri_path):
+async def websocket_handler(router, auth_function, websocket):
     websocket.name = base_words(id(websocket))
 
     subscriptions = set()
 
-    _log.info("%s: New websocket with path: %s", websocket.name, uri_path)
+    _log.info("%s: New websocket with path: %s", websocket.name)
 
     # Launch keep-alive coroutine
     asyncio.ensure_future(handlers.keep_alive(websocket))
@@ -66,8 +64,7 @@ async def websocket_handler(router, auth_function, websocket, uri_path):
                 "router": router,
                 "subscriptions": subscriptions,
                 "message": message,
-                "uri_path": uri_path,
-                "check_auth": partial(check_auth, auth_function, websocket, uri_path),
+                "check_auth": partial(check_auth, auth_function, websocket),
             }
 
             try:
